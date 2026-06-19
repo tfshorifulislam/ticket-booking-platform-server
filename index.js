@@ -85,44 +85,48 @@ async function run() {
 
         app.post('/api/book-ticket', async (req, res) => {
             try {
-                const booking = req.body;
-
-                if (!booking.ticketId || !booking.quantity) {
-                    return res.status(400).send({
-                        success: false,
-                        message: 'Invalid booking data',
-                    });
-                }
-
-                const newBooking = {
-                    ticketId: booking.ticketId,
-                    quantity: Number(booking.quantity),
-                    status: 'Pending',
-
-                    createdAt: new Date(),
-                };
-
-                const result = await bookingCollection.insertOne(newBooking);
-
-                res.send({
-                    success: true,
-                    insertedId: result.insertedId,
-                });
-
-            } catch (error) {
-                console.error(error);
-                res.status(500).send({ success: false, message: 'Booking failed' });
+              const body = req.body;
+          
+              const newBooking = {
+                ticketId: body.ticketId,
+          
+                // 🔥 MUST HAVE (vendor page এর জন্য)
+                userName: body.userName,
+                userEmail: body.userEmail,
+          
+                ticketTitle: body.ticketTitle,
+                from: body.from,
+                to: body.to,
+          
+                unitPrice: Number(body.unitPrice),
+                quantity: Number(body.quantity),
+          
+                status: 'pending', // 🔥 VERY IMPORTANT
+          
+                createdAt: new Date(),
+              };
+          
+              const result = await bookingCollection.insertOne(newBooking);
+          
+              res.send({
+                success: true,
+                insertedId: result.insertedId,
+              });
+          
+            } catch (err) {
+              console.error(err);
+              res.status(500).send({ success: false });
             }
-        });
+          });
 
         app.get('/api/my-bookings', async (req, res) => {
             try {
-              const result = await bookingCollection.find().toArray();
-              res.send(result);
+                const result = await bookingCollection.find().toArray();
+                res.send(result);
             } catch (err) {
-              res.status(500).send({ message: 'Failed to load bookings' });
+                res.status(500).send({ message: 'Failed to load bookings' });
             }
-          });
+        });
 
         app.get('/api/my-tickets', async (req, res) => {
             const email = req.query.email;
@@ -215,10 +219,19 @@ async function run() {
 
         app.get('/api/bookings', async (req, res) => {
             try {
-              const result = await bookingCollection.find().toArray();
+                const result = await bookingCollection.find().toArray();
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: 'Failed to load bookings' });
+            }
+        });
+
+        app.get('/api/vendor-bookings', async (req, res) => {
+            try {
+              const result = await bookingCollection.find({ status: 'pending' }).toArray();
               res.send(result);
             } catch (err) {
-              res.status(500).send({ message: 'Failed to load bookings' });
+              res.status(500).send({ message: 'Failed to fetch bookings' });
             }
           });
 
