@@ -83,6 +83,29 @@ async function run() {
         });
 
 
+        app.get('/api/my-tickets', async (req, res) => {
+            const email = req.query.email;
+          
+            const result = await ticketBookingCollection
+              .find({ vendorEmail: email })
+              .toArray();
+          
+            res.send(result);
+          });
+
+          app.delete('/api/ticket/:id', async (req, res) => {
+            const id = req.params.id;
+          
+            const result = await ticketBookingCollection.deleteOne({
+              _id: new ObjectId(id),
+            });
+          
+            res.send(result);
+          });
+
+          
+
+
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
