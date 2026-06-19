@@ -103,7 +103,13 @@ async function run() {
             res.send(result);
           });
 
+          app.get('/api/pending-tickets', async (req, res) => {
+            const result = await ticketBookingCollection
+              .find({ status: 'pending' })
+              .toArray();
           
+            res.send(result);
+          });
 
 
 
