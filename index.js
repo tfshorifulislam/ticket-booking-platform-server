@@ -7,7 +7,7 @@ require('dotenv').config();
 app.use(express.json());
 app.use(cors());
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 app.get('/', (req, res) => {
     res.send('Hello World!');
@@ -107,6 +107,20 @@ async function run() {
             const result = await ticketBookingCollection
               .find({ status: 'pending' })
               .toArray();
+          
+            res.send(result);
+          });
+
+          app.patch('/api/ticket/:id', async (req, res) => {
+            const id = req.params.id;
+            const { status } = req.body;
+          
+            const result = await ticketBookingCollection.updateOne(
+              { _id: new ObjectId(id) },
+              {
+                $set: { status },
+              }
+            );
           
             res.send(result);
           });
