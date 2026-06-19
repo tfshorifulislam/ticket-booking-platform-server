@@ -213,6 +213,15 @@ async function run() {
             }
         });
 
+        app.get('/api/bookings', async (req, res) => {
+            try {
+              const result = await bookingCollection.find().toArray();
+              res.send(result);
+            } catch (err) {
+              res.status(500).send({ message: 'Failed to load bookings' });
+            }
+          });
+
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
