@@ -93,16 +93,6 @@ async function run() {
             res.send(result);
           });
 
-          app.delete('/api/ticket/:id', async (req, res) => {
-            const id = req.params.id;
-          
-            const result = await ticketBookingCollection.deleteOne({
-              _id: new ObjectId(id),
-            });
-          
-            res.send(result);
-          });
-
           app.get('/api/pending-tickets', async (req, res) => {
             const result = await ticketBookingCollection
               .find({ status: 'pending' })
@@ -112,27 +102,52 @@ async function run() {
           });
 
           app.patch('/api/ticket/:id', async (req, res) => {
-            const id = req.params.id;
-            const { status } = req.body;
+            try {
+              const id = req.params.id;
+              const updatedData = req.body;
           
-            const result = await ticketBookingCollection.updateOne(
-              { _id: new ObjectId(id) },
-              {
-                $set: { status },
-              }
-            );
+              const result = await ticketBookingCollection.updateOne(
+                { _id: new ObjectId(id) },
+                {
+                  $set: updatedData,
+                }
+              );
+          
+              res.send(result);
+            } catch (error) {
+              res.status(500).send({ message: 'Update failed' });
+            }
+          });
+
+          app.get('/api/approved-tickets', async (req, res) => {
+            const result = await ticketBookingCollection
+              .find({ status: 'approved' })
+              .toArray();
           
             res.send(result);
           });
 
+          
           app.delete('/api/ticket/:id', async (req, res) => {
-            const id = req.params.id;
+            try {
+              const id = req.params.id;
           
-            const result = await ticketBookingCollection.deleteOne({
-              _id: new ObjectId(id),
-            });
+              const result = await ticketBookingCollection.deleteOne({
+                _id: new ObjectId(id),
+              });
           
-            res.send(result);
+              res.send({
+                success: true,
+                deletedCount: result.deletedCount,
+              });
+          
+            } catch (error) {
+              console.error(error);
+              res.status(500).send({
+                success: false,
+                message: 'Delete failed',
+              });
+            }
           });
 
         await client.db("admin").command({ ping: 1 });
