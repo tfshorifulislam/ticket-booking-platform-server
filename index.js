@@ -127,7 +127,7 @@ async function run() {
             res.send(result);
           });
 
-          
+
           app.delete('/api/ticket/:id', async (req, res) => {
             try {
               const id = req.params.id;
@@ -147,6 +147,28 @@ async function run() {
                 success: false,
                 message: 'Delete failed',
               });
+            }
+          });
+
+          app.get('/api/ticket/:id', async (req, res) => {
+            try {
+              const id = req.params.id;
+          
+              if (!ObjectId.isValid(id)) {
+                return res.status(400).send({ message: 'Invalid ID' });
+              }
+          
+              const result = await ticketBookingCollection.findOne({
+                _id: new ObjectId(id),
+              });
+          
+              if (!result) {
+                return res.status(404).send({ message: 'Not found' });
+              }
+          
+              res.send(result);
+            } catch (err) {
+              res.status(500).send({ error: err.message });
             }
           });
 
