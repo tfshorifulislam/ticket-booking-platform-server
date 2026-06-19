@@ -235,6 +235,28 @@ async function run() {
             }
           });
 
+          app.patch('/api/vendor-booking/:id', async (req, res) => {
+            try {
+              const id = req.params.id;
+              const { status } = req.body;
+          
+              const result = await bookingCollection.updateOne(
+                { _id: new ObjectId(id) },
+                {
+                  $set: { status },
+                }
+              );
+          
+              res.send({
+                success: true,
+                modifiedCount: result.modifiedCount,
+              });
+            } catch (err) {
+              console.error(err);
+              res.status(500).send({ success: false });
+            }
+          });
+
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
