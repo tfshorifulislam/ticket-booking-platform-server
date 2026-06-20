@@ -257,6 +257,57 @@ async function run() {
             }
           });
 
+          app.patch('/api/advertise-ticket/:id', async (req, res) => {
+            try {
+              const id = req.params.id;
+              const { advertised } = req.body;
+          
+              if (advertised === true) {
+                const count = await ticketBookingCollection.countDocuments({
+                  advertised: true,
+                });
+          
+                if (count >= 6) {
+                  return res.status(400).send({
+                    success: false,
+                    message: 'Maximum 6 tickets can be advertised',
+                  });
+                }
+              }
+          
+              const result = await ticketBookingCollection.updateOne(
+                {
+                  _id: new ObjectId(id),
+                },
+                {
+                  $set: {
+                    advertised,
+                  },
+                }
+              );
+          
+              res.send({
+                success: true,
+                modifiedCount: result.modifiedCount,
+              });
+            } catch (error) {
+              console.error(error);
+          
+              res.status(500).send({
+                success: false,
+              });
+            }
+          });
+
+          app.get('/api/advertised-tickets', async (req, res) => {
+            const result = await ticketBookingCollection
+              .find({ advertised: true })
+              .limit(6)
+              .toArray();
+          
+            res.send(result);
+          });
+
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
