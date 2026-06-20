@@ -31,6 +31,119 @@ async function run() {
         const database = client.db("ticket_booking_db");
         const ticketBookingCollection = database.collection('ticket_booking');
         const bookingCollection = database.collection('bookings');
+        const userCollection = database.collection('user');
+
+        app.get('/api/users', async (req, res) => {
+            try {
+              const users = await userCollection.find().toArray();
+          
+              // Transform data for consistency
+              const formattedUsers = users.map(user => ({
+                _id: user._id.toString(),           // Convert ObjectId to string
+                id: user._id.toString(),            // Also provide 'id' for session compatibility
+                name: user.name || "No Name",
+                email: user.email,
+                role: user.role || "user",
+                isFraud: user.isFraud || false,
+                createdAt: user.createdAt,
+                // Add any other fields you need
+              }));
+          
+              res.send(formattedUsers);
+            } catch (error) {
+              console.error(error);
+              res.status(500).send({
+                success: false,
+                message: 'Failed to load users',
+              });
+            }
+          });
+
+        app.get('/api/users', async (req, res) => {
+            try {
+                const users = await userCollection.find().toArray();
+
+                res.send(users);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({
+                    success: false,
+                    message: 'Failed to load users',
+                });
+            }
+        });
+
+        app.patch('/api/users/make-vendor/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const result = await userCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            role: 'vendor',
+                            isFraud: false,
+                        },
+                    }
+                );
+
+                res.send({
+                    success: true,
+                    modifiedCount: result.modifiedCount,
+                });
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({
+                    success: false,
+                });
+            }
+        });
+
+        app.patch('/api/users/fraud/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const vendor = await userCollection.findOne({
+                    _id: new ObjectId(id),
+                });
+
+                if (!vendor) {
+                    return res.status(404).send({
+                        success: false,
+                        message: 'Vendor not found',
+                    });
+                }
+
+                await userCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            isFraud: true,
+                        },
+                    }
+                );
+
+                await ticketBookingCollection.updateMany(
+                    {
+                        vendorEmail: vendor.email,
+                    },
+                    {
+                        $set: {
+                            hidden: true,
+                        },
+                    }
+                );
+
+                res.send({
+                    success: true,
+                });
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({
+                    success: false,
+                });
+            }
+        });
 
         app.post('/api/add-ticket', async (req, res) => {
             try {
@@ -41,6 +154,17 @@ async function run() {
                     return res.status(400).send({
                         success: false,
                         message: 'Missing required fields',
+                    });
+                }
+
+                const vendor = await userCollection.findOne({
+                    email: ticket.vendorEmail,
+                });
+
+                if (vendor?.isFraud) {
+                    return res.status(403).send({
+                        success: false,
+                        message: 'Fraud vendor cannot add tickets',
                     });
                 }
 
@@ -85,39 +209,39 @@ async function run() {
 
         app.post('/api/book-ticket', async (req, res) => {
             try {
-              const body = req.body;
-          
-              const newBooking = {
-                ticketId: body.ticketId,
-          
-                // 🔥 MUST HAVE (vendor page এর জন্য)
-                userName: body.userName,
-                userEmail: body.userEmail,
-          
-                ticketTitle: body.ticketTitle,
-                from: body.from,
-                to: body.to,
-          
-                unitPrice: Number(body.unitPrice),
-                quantity: Number(body.quantity),
-          
-                status: 'pending', // 🔥 VERY IMPORTANT
-          
-                createdAt: new Date(),
-              };
-          
-              const result = await bookingCollection.insertOne(newBooking);
-          
-              res.send({
-                success: true,
-                insertedId: result.insertedId,
-              });
-          
+                const body = req.body;
+
+                const newBooking = {
+                    ticketId: body.ticketId,
+
+                    // 🔥 MUST HAVE (vendor page এর জন্য)
+                    userName: body.userName,
+                    userEmail: body.userEmail,
+
+                    ticketTitle: body.ticketTitle,
+                    from: body.from,
+                    to: body.to,
+
+                    unitPrice: Number(body.unitPrice),
+                    quantity: Number(body.quantity),
+
+                    status: 'pending', // 🔥 VERY IMPORTANT
+
+                    createdAt: new Date(),
+                };
+
+                const result = await bookingCollection.insertOne(newBooking);
+
+                res.send({
+                    success: true,
+                    insertedId: result.insertedId,
+                });
+
             } catch (err) {
-              console.error(err);
-              res.status(500).send({ success: false });
+                console.error(err);
+                res.status(500).send({ success: false });
             }
-          });
+        });
 
         app.get('/api/my-bookings', async (req, res) => {
             try {
@@ -228,85 +352,85 @@ async function run() {
 
         app.get('/api/vendor-bookings', async (req, res) => {
             try {
-              const result = await bookingCollection.find({ status: 'pending' }).toArray();
-              res.send(result);
+                const result = await bookingCollection.find({ status: 'pending' }).toArray();
+                res.send(result);
             } catch (err) {
-              res.status(500).send({ message: 'Failed to fetch bookings' });
+                res.status(500).send({ message: 'Failed to fetch bookings' });
             }
-          });
+        });
 
-          app.patch('/api/vendor-booking/:id', async (req, res) => {
+        app.patch('/api/vendor-booking/:id', async (req, res) => {
             try {
-              const id = req.params.id;
-              const { status } = req.body;
-          
-              const result = await bookingCollection.updateOne(
-                { _id: new ObjectId(id) },
-                {
-                  $set: { status },
-                }
-              );
-          
-              res.send({
-                success: true,
-                modifiedCount: result.modifiedCount,
-              });
-            } catch (err) {
-              console.error(err);
-              res.status(500).send({ success: false });
-            }
-          });
+                const id = req.params.id;
+                const { status } = req.body;
 
-          app.patch('/api/advertise-ticket/:id', async (req, res) => {
-            try {
-              const id = req.params.id;
-              const { advertised } = req.body;
-          
-              if (advertised === true) {
-                const count = await ticketBookingCollection.countDocuments({
-                  advertised: true,
+                const result = await bookingCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: { status },
+                    }
+                );
+
+                res.send({
+                    success: true,
+                    modifiedCount: result.modifiedCount,
                 });
-          
-                if (count >= 6) {
-                  return res.status(400).send({
-                    success: false,
-                    message: 'Maximum 6 tickets can be advertised',
-                  });
-                }
-              }
-          
-              const result = await ticketBookingCollection.updateOne(
-                {
-                  _id: new ObjectId(id),
-                },
-                {
-                  $set: {
-                    advertised,
-                  },
-                }
-              );
-          
-              res.send({
-                success: true,
-                modifiedCount: result.modifiedCount,
-              });
-            } catch (error) {
-              console.error(error);
-          
-              res.status(500).send({
-                success: false,
-              });
+            } catch (err) {
+                console.error(err);
+                res.status(500).send({ success: false });
             }
-          });
+        });
 
-          app.get('/api/advertised-tickets', async (req, res) => {
+        app.patch('/api/advertise-ticket/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const { advertised } = req.body;
+
+                if (advertised === true) {
+                    const count = await ticketBookingCollection.countDocuments({
+                        advertised: true,
+                    });
+
+                    if (count >= 6) {
+                        return res.status(400).send({
+                            success: false,
+                            message: 'Maximum 6 tickets can be advertised',
+                        });
+                    }
+                }
+
+                const result = await ticketBookingCollection.updateOne(
+                    {
+                        _id: new ObjectId(id),
+                    },
+                    {
+                        $set: {
+                            advertised,
+                        },
+                    }
+                );
+
+                res.send({
+                    success: true,
+                    modifiedCount: result.modifiedCount,
+                });
+            } catch (error) {
+                console.error(error);
+
+                res.status(500).send({
+                    success: false,
+                });
+            }
+        });
+
+        app.get('/api/advertised-tickets', async (req, res) => {
             const result = await ticketBookingCollection
-              .find({ advertised: true })
-              .limit(6)
-              .toArray();
-          
+                .find({ advertised: true })
+                .limit(6)
+                .toArray();
+
             res.send(result);
-          });
+        });
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
