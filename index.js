@@ -32,6 +32,7 @@ async function run() {
 
         const database = client.db("ticket-booking-user-info");
         const addTicketCollection = database.collection('all_ticket');
+        const bookingsCollection = database.collection('booking')
 
         //================= add ticket api ============================
         app.post("/api/add-ticket", async (req, res) => {
@@ -39,6 +40,55 @@ async function run() {
             const result = await addTicketCollection.insertOne(ticket);
             res.send(result);
         })
+
+        //=====================booking ticket api =====================
+        app.post('/api/booking-ticket', async (req, res) => {
+            const { ticketId, quantity, userEmail } = req.body;
+
+            const ticket = await addTicketCollection.findOne({
+                _id: new ObjectId(ticketId),
+            });
+
+            if (!ticket) {
+                return res.status(404).send({
+                    success: false,
+                    message: 'Ticket not found',
+                });
+            }
+
+            if (ticket.ticketQuantity < quantity) {
+                return res.status(400).send({
+                    success: false,
+                    message: 'Not enough tickets available',
+                });
+            }
+
+            const booking = {
+                ticketId,
+                userEmail,
+                quantity,
+                totalPrice: ticket.price * quantity,
+                bookedAt: new Date(),
+                status: 'pending',
+            };
+
+            const result = await bookingsCollection.insertOne(booking);
+
+            await addTicketCollection.updateOne(
+                { _id: new ObjectId(ticketId) },
+                {
+                    $inc: {
+                        ticketQuantity: -quantity,
+                    },
+                }
+            );
+
+            res.send({
+                success: true,
+                insertedId: result.insertedId,
+                message: 'Ticket booked successfully',
+            });
+        });
 
         //================= get user created tickets api ============================
         app.get('/api/get-user-created-tickets', async (req, res) => {
