@@ -28,7 +28,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // await client.connect();
-        // ... [Prior initialization setup code remains identical]
+
 
         const database = client.db("ticket-booking-user-info");
         const addTicketCollection = database.collection('ticket_booking');
@@ -40,7 +40,21 @@ async function run() {
             res.send(result);
         })
 
+        //================= get user created tickets api ============================
+        app.get('/api/get-user-created-tickets', async (req, res) => {
+            const query = {};
 
+            if (req.query.vendorEmail) {
+                query.vendorEmail = req.query.vendorEmail;
+            }
+
+            if (req.query.status) {
+                query.status = req.query.status;
+            }
+            const cursor = addTicketCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        })
 
 
         await client.db("admin").command({ ping: 1 });
