@@ -31,7 +31,7 @@ async function run() {
 
 
         const database = client.db("ticket-booking-user-info");
-        const addTicketCollection = database.collection('ticket_booking');
+        const addTicketCollection = database.collection('all_ticket');
 
         //================= add ticket api ============================
         app.post("/api/add-ticket", async (req, res) => {
