@@ -43,7 +43,7 @@ async function run() {
 
         //=====================booking ticket api =====================
         app.post('/api/booking-ticket', async (req, res) => {
-            const { ticketId, quantity, userEmail , image, title } = req.body;
+            const { ticketId, quantity, userEmail, image, title } = req.body;
 
             const ticket = await addTicketCollection.findOne({
                 _id: new ObjectId(ticketId),
@@ -94,11 +94,20 @@ async function run() {
 
         //============ booking ticket get ================
         app.get('/api/my-booked-tickets', async (req, res) => {
-            const cursor = bookingsCollection.find(query);
-            const result = await cursor.toArray();
-            res.send(result);
-        })
+            try {
+                const email = req.query.email;
 
+                if (!email) return res.send([]);
+
+                const result = await bookingsCollection.find({
+                    userEmail: email   // 👈 MUST match DB field
+                }).toArray();
+
+                res.send(result);
+            } catch (err) {
+                res.status(500).send([]);
+            }
+        });
         //================= get user created tickets api ============================
         app.get('/api/get-user-created-tickets', async (req, res) => {
             const query = {};
