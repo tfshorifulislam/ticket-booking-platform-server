@@ -43,7 +43,7 @@ async function run() {
 
         //=====================booking ticket api =====================
         app.post('/api/booking-ticket', async (req, res) => {
-            const { ticketId, quantity, userEmail } = req.body;
+            const { ticketId, quantity, userEmail , image, title } = req.body;
 
             const ticket = await addTicketCollection.findOne({
                 _id: new ObjectId(ticketId),
@@ -67,6 +67,8 @@ async function run() {
                 ticketId,
                 userEmail,
                 quantity,
+                image: ticket.image,
+                title,
                 totalPrice: ticket.price * quantity,
                 bookedAt: new Date(),
                 status: 'pending',
@@ -89,6 +91,13 @@ async function run() {
                 message: 'Ticket booked successfully',
             });
         });
+
+        //============ booking ticket get ================
+        app.get('/api/my-booked-tickets', async (req, res) => {
+            const cursor = bookingsCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        })
 
         //================= get user created tickets api ============================
         app.get('/api/get-user-created-tickets', async (req, res) => {
