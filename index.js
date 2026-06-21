@@ -43,54 +43,32 @@ async function run() {
 
         //=====================booking ticket api =====================
         app.post('/api/booking-ticket', async (req, res) => {
-            const { ticketId, quantity, userEmail, image, title } = req.body;
-
+            const { ticketId, quantity, userEmail, title, to, from } = req.body;
+          
             const ticket = await addTicketCollection.findOne({
-                _id: new ObjectId(ticketId),
+              _id: new ObjectId(ticketId),
             });
-
-            if (!ticket) {
-                return res.status(404).send({
-                    success: false,
-                    message: 'Ticket not found',
-                });
-            }
-
-            if (ticket.ticketQuantity < quantity) {
-                return res.status(400).send({
-                    success: false,
-                    message: 'Not enough tickets available',
-                });
-            }
-
-            const booking = {
-                ticketId,
-                userEmail,
-                quantity,
-                image: ticket.image,
-                title,
-                totalPrice: ticket.price * quantity,
-                bookedAt: new Date(),
-                status: 'pending',
-            };
-
-            const result = await bookingsCollection.insertOne(booking);
-
+          
+            await bookingsCollection.insertOne({
+              ticketId,
+              userEmail,
+              quantity,
+              image: ticket.image,
+              title: ticket.title,
+              totalPrice: ticket.price * quantity,
+              bookedAt: new Date(),
+              status: 'pending',
+              to,
+              from,
+            });
+          
             await addTicketCollection.updateOne(
-                { _id: new ObjectId(ticketId) },
-                {
-                    $inc: {
-                        ticketQuantity: -quantity,
-                    },
-                }
+              { _id: new ObjectId(ticketId) },
+              { $inc: { ticketQuantity: -quantity } }
             );
-
-            res.send({
-                success: true,
-                insertedId: result.insertedId,
-                message: 'Ticket booked successfully',
-            });
-        });
+          
+            res.send({ success: true, message: 'Booked successfully' });
+          });
 
         //============ booking ticket get ================
         app.get('/api/my-booked-tickets', async (req, res) => {
