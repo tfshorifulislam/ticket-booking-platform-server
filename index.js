@@ -66,7 +66,14 @@ async function run() {
             const result = await addTicketCollection.updateOne(filter, updateDoc);
             res.send(result);
         })
-        
+
+        // ====================== my added tickets delete ===============
+        app.delete('/api/delete-ticket-info', async (req, res) => {
+            const { _id } = req.body;
+            const filter = { _id: new ObjectId(_id) };
+            const result = await addTicketCollection.deleteOne(filter);
+            res.send(result);
+        })
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
