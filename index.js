@@ -75,6 +75,18 @@ async function run() {
             res.send(result);
         })
 
+        // all approved tickets
+        app.get('/api/tickets', async (req, res) => {
+            const cursor = addTicketCollection.find({
+                status: "pending"
+            });
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+
+
+
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
