@@ -84,7 +84,15 @@ async function run() {
             res.send(result);
         });
 
+        // ticket details page api
+        app.get('/api/tickets/:id', async (req, res) => {
+            const { id } = req.params;
+            const result = await addTicketCollection.findOne({
+                _id: new ObjectId(id),
+            });
 
+            res.send(result);
+        });
 
 
         await client.db("admin").command({ ping: 1 });
