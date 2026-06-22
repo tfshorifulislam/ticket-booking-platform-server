@@ -74,21 +74,45 @@ async function run() {
 
         //=============== booking ticket accept api ==================
         app.put("/bookings/accept/:id", async (req, res) => {
-            const bookingId = req.params.id;
+            try {
+                const bookingId = req.params.id;
 
-            const booking = await bookingsCollection.findById(bookingId);
+                const booking = await bookingsCollection.findOne({
+                    _id: new ObjectId(bookingId)
+                });
 
-            if (!booking) {
-                return res.status(404).json({ message: "Booking not found" });
-            }
-            if (booking.status !== "pending") {
-                return res.status(400).json({
-                    message: `Cannot accept. This booking is already ${booking.status}.`
+                if (!booking) {
+                    return res.status(404).json({
+                        message: "Booking not found"
+                    });
+                }
+
+                if (booking.status !== "pending") {
+                    return res.status(400).json({
+                        message: `Cannot accept. This booking is already ${booking.status}`
+                    });
+                }
+
+                await bookingsCollection.updateOne(
+                    { _id: new ObjectId(bookingId) },
+                    {
+                        $set: {
+                            status: "accepted"
+                        }
+                    }
+                );
+
+                res.status(200).json({
+                    success: true,
+                    message: "Booking accepted successfully"
+                });
+
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    message: error.message
                 });
             }
-            booking.status = "accepted";
-            await booking.save();
-            res.status(200).json({ message: "Booking accepted successfully", booking });
         });
 
         //============ booking ticket get ================
