@@ -43,32 +43,33 @@ async function run() {
 
         //=====================booking ticket api =====================
         app.post('/api/booking-ticket', async (req, res) => {
-            const { ticketId, quantity, userEmail, title, to, from } = req.body;
-          
+            const { ticketId, quantity, userEmail, title, to, from, vendorEmail } = req.body;
+
             const ticket = await addTicketCollection.findOne({
-              _id: new ObjectId(ticketId),
+                _id: new ObjectId(ticketId),
             });
-          
+
             await bookingsCollection.insertOne({
-              ticketId,
-              userEmail,
-              quantity,
-              image: ticket.image,
-              title: ticket.title,
-              totalPrice: ticket.price * quantity,
-              bookedAt: new Date(),
-              status: 'pending',
-              to,
-              from,
+                ticketId,
+                userEmail,
+                quantity,
+                image: ticket.image,
+                title: ticket.title,
+                totalPrice: ticket.price * quantity,
+                bookedAt: new Date(),
+                status: 'pending',
+                to,
+                from,
+                vendorEmail
             });
-          
+
             await addTicketCollection.updateOne(
-              { _id: new ObjectId(ticketId) },
-              { $inc: { ticketQuantity: -quantity } }
+                { _id: new ObjectId(ticketId) },
+                { $inc: { ticketQuantity: -quantity } }
             );
-          
+
             res.send({ success: true, message: 'Booked successfully' });
-          });
+        });
 
         //============ booking ticket get ================
         app.get('/api/my-booked-tickets', async (req, res) => {
@@ -78,7 +79,7 @@ async function run() {
                 if (!email) return res.send([]);
 
                 const result = await bookingsCollection.find({
-                    userEmail: email   // 👈 MUST match DB field
+                    userEmail: email
                 }).toArray();
 
                 res.send(result);
@@ -86,6 +87,24 @@ async function run() {
                 res.status(500).send([]);
             }
         });
+
+        //=================== request booking vendor dashboard =========================
+        app.get('/api/request-booking-tickets', async (req, res) => {
+            const vendorEmail = req.query.vendorEmail;
+
+            if (!vendorEmail) {
+                return res.send([]);
+            }
+
+            const result = await bookingsCollection
+                .find({
+                    vendorEmail
+                })
+                .toArray();
+
+            res.send(result);
+        });
+
         //================= get user created tickets api ============================
         app.get('/api/get-user-created-tickets', async (req, res) => {
             const query = {};
