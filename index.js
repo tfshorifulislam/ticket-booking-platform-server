@@ -43,7 +43,7 @@ async function run() {
 
         //=====================booking ticket api =====================
         app.post('/api/booking-ticket', async (req, res) => {
-            const { ticketId, quantity, userEmail, title, to, from, vendorEmail } = req.body;
+            const { ticketId, quantity, userEmail, title, to, from, vendorEmail, userName} = req.body;
 
             const ticket = await addTicketCollection.findOne({
                 _id: new ObjectId(ticketId),
@@ -60,7 +60,8 @@ async function run() {
                 status: 'pending',
                 to,
                 from,
-                vendorEmail
+                vendorEmail,
+                userName
             });
 
             await addTicketCollection.updateOne(
