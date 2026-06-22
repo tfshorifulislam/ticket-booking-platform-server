@@ -115,6 +115,51 @@ async function run() {
             }
         });
 
+        //=============== booking ticket reject api ==================
+        app.put("/bookings/reject/:id", async (req, res) => {
+            try {
+                const bookingId = req.params.id;
+
+                const booking = await bookingsCollection.findOne({
+                    _id: new ObjectId(bookingId)
+                });
+
+                if (!booking) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Booking not found"
+                    });
+                }
+
+                if (booking.status !== "pending") {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Cannot reject. This booking is already ${booking.status}`
+                    });
+                }
+
+                await bookingsCollection.updateOne(
+                    { _id: new ObjectId(bookingId) },
+                    {
+                        $set: {
+                            status: "rejected"
+                        }
+                    }
+                );
+
+                res.status(200).json({
+                    success: true,
+                    message: "Booking rejected successfully"
+                });
+
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+        });
+
         //============ booking ticket get ================
         app.get('/api/my-booked-tickets', async (req, res) => {
             try {
