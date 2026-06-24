@@ -33,6 +33,13 @@ async function run() {
         const database = client.db("ticket-booking-user-info");
         const addTicketCollection = database.collection('all_ticket');
         const bookingsCollection = database.collection('booking')
+        const userCollection = database.collection('user')
+
+        // =================== all user get ==============================
+        app.get('/all-user', async (req, res) => {
+            const result = await userCollection.find().toArray();
+            res.send(result);
+        })
 
         //=================== get all pending tickets for admin approval ====================
         app.get('/api/get-all-tickets', async (req, res) => {
