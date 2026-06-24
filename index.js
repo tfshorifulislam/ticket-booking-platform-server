@@ -34,6 +34,22 @@ async function run() {
         const addTicketCollection = database.collection('all_ticket');
         const bookingsCollection = database.collection('booking')
 
+        //=================== get all pending tickets for admin approval ====================
+        app.get('/api/get-all-tickets', async (req, res) => {
+            try {
+                const result = await addTicketCollection
+                    .find({ status: 'pending' })
+                    .toArray();
+
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({
+                    message: 'Failed to fetch tickets',
+                    error: error.message,
+                });
+            }
+        });
+
         //================= add ticket api ============================
         app.post("/api/add-ticket", async (req, res) => {
             const ticket = req.body;
@@ -247,6 +263,7 @@ async function run() {
 
             res.send(result);
         });
+
 
 
         await client.db("admin").command({ ping: 1 });
