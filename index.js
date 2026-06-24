@@ -358,7 +358,7 @@ async function run() {
         // all approved tickets
         app.get('/api/tickets', async (req, res) => {
             const cursor = addTicketCollection.find({
-                status: "pending"
+                status: "approved"
             });
             const result = await cursor.toArray();
             res.send(result);
@@ -374,6 +374,48 @@ async function run() {
             res.send(result);
         });
 
+        //================= Advertise Toggle API ====================
+        app.patch('/api/advertise-ticket/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+                const { advertised } = req.body;
+
+                // Maximum 6 advertised tickets
+                if (advertised) {
+                    const count = await addTicketCollection.countDocuments({
+                        advertised: true,
+                    });
+
+                    if (count >= 6) {
+                        return res.status(400).send({
+                            success: false,
+                            message: 'Maximum 6 advertised tickets allowed',
+                        });
+                    }
+                }
+
+                const result = await addTicketCollection.updateOne(
+                    {
+                        _id: new ObjectId(id),
+                    },
+                    {
+                        $set: {
+                            advertised,
+                        },
+                    }
+                );
+
+                res.send({
+                    success: true,
+                    modifiedCount: result.modifiedCount,
+                });
+            } catch (error) {
+                res.status(500).send({
+                    success: false,
+                    message: error.message,
+                });
+            }
+        });
 
 
         await client.db("admin").command({ ping: 1 });
