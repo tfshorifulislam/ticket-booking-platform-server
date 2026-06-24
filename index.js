@@ -50,6 +50,23 @@ async function run() {
             }
         });
 
+        // =================== update pending status =====================
+        app.patch('/api/ticket-status/:id', async (req, res) => {
+            const { id } = req.params;
+            const { status } = req.body;
+
+            const result = await addTicketCollection.updateOne(
+                { _id: new ObjectId(id) },
+                {
+                    $set: {
+                        status,
+                    },
+                }
+            );
+
+            res.send(result);
+        });
+
         //================= add ticket api ============================
         app.post("/api/add-ticket", async (req, res) => {
             const ticket = req.body;
