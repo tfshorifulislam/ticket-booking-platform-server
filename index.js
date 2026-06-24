@@ -41,6 +41,92 @@ async function run() {
             res.send(result);
         })
 
+        // ================= Make Admin =================
+        app.patch('/api/users/make-admin/:id', async (req, res) => {
+            const { id } = req.params;
+
+            const result = await userCollection.updateOne(
+                { _id: new ObjectId(id) },
+                {
+                    $set: {
+                        role: 'admin',
+                        isFraud: false,
+                    },
+                }
+            );
+
+            res.send({
+                success: result.modifiedCount > 0,
+            });
+        });
+
+        // ================= Make Vendor =================
+        app.patch('/api/users/make-vendor/:id', async (req, res) => {
+            const { id } = req.params;
+
+            const result = await userCollection.updateOne(
+                { _id: new ObjectId(id) },
+                {
+                    $set: {
+                        role: 'vendor',
+                        isFraud: false,
+                    },
+                }
+            );
+
+            res.send({
+                success: result.modifiedCount > 0,
+            });
+        });
+
+        // ================= Mark Fraud Vendor =================
+        app.patch('/api/users/fraud/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+
+                const user = await userCollection.findOne({
+                    _id: new ObjectId(id),
+                });
+
+                if (!user) {
+                    return res.status(404).send({
+                        success: false,
+                        message: 'User not found',
+                    });
+                }
+
+                await userCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            isFraud: true,
+                        },
+                    }
+                );
+
+                await addTicketCollection.updateMany(
+                    {
+                        vendorEmail: user.email,
+                    },
+                    {
+                        $set: {
+                            status: 'rejected',
+                        },
+                    }
+                );
+
+                res.send({
+                    success: true,
+                    message: 'Vendor marked as fraud',
+                });
+            } catch (error) {
+                res.status(500).send({
+                    success: false,
+                    message: error.message,
+                });
+            }
+        });
+
         //=================== get all pending tickets for admin approval ====================
         app.get('/api/get-all-tickets', async (req, res) => {
             try {
