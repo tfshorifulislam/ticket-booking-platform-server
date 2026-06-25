@@ -82,7 +82,7 @@ async function run() {
         })
 
         // ================= Make Admin =================
-        app.patch('/api/users/make-admin/:id', async (req, res) => {
+        app.patch('/api/users/make-admin/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
 
             const result = await userCollection.updateOne(
@@ -101,7 +101,7 @@ async function run() {
         });
 
         // ================= Make Vendor =================
-        app.patch('/api/users/make-vendor/:id', async (req, res) => {
+        app.patch('/api/users/make-vendor/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
 
             const result = await userCollection.updateOne(
@@ -120,7 +120,7 @@ async function run() {
         });
 
         // ================= Mark Fraud Vendor =================
-        app.patch('/api/users/fraud/:id', async (req, res) => {
+        app.patch('/api/users/fraud/:id', verifyToken, async (req, res) => {
             try {
                 const { id } = req.params;
 
@@ -168,7 +168,7 @@ async function run() {
         });
 
         //=================== get all pending tickets for admin approval ====================
-        app.get('/api/get-all-tickets', async (req, res) => {
+        app.get('/api/get-all-tickets', verifyToken, async (req, res) => {
             try {
                 const result = await addTicketCollection
                     .find({ status: 'pending' })
@@ -184,7 +184,7 @@ async function run() {
         });
 
         // =================== update pending status =====================
-        app.patch('/api/ticket-status/:id', async (req, res) => {
+        app.patch('/api/ticket-status/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
             const { status } = req.body;
 
@@ -201,14 +201,14 @@ async function run() {
         });
 
         //================= add ticket api ============================
-        app.post("/api/add-ticket", async (req, res) => {
+        app.post("/api/add-ticket", verifyToken, async (req, res) => {
             const ticket = req.body;
             const result = await addTicketCollection.insertOne(ticket);
             res.send(result);
         })
 
         //=====================booking ticket api =====================
-        app.post('/api/booking-ticket', async (req, res) => {
+        app.post('/api/booking-ticket', verifyToken, async (req, res) => {
             const { ticketId, quantity, userEmail, title, to, from, vendorEmail, userName } = req.body;
 
             const ticket = await addTicketCollection.findOne({
@@ -239,7 +239,7 @@ async function run() {
         });
 
         //=============== booking ticket accept api ==================
-        app.put("/bookings/accept/:id", async (req, res) => {
+        app.put("/bookings/accept/:id", verifyToken, async (req, res) => {
             try {
                 const bookingId = req.params.id;
 
@@ -282,7 +282,7 @@ async function run() {
         });
 
         //=============== booking ticket reject api ==================
-        app.put("/bookings/reject/:id", async (req, res) => {
+        app.put("/bookings/reject/:id",verifyToken, async (req, res) => {
             try {
                 const bookingId = req.params.id;
 
@@ -327,7 +327,7 @@ async function run() {
         });
 
         //============ booking ticket get ================
-        app.get('/api/my-booked-tickets', async (req, res) => {
+        app.get('/api/my-booked-tickets', verifyToken, async (req, res) => {
             try {
                 const email = req.query.email;
 
@@ -344,7 +344,7 @@ async function run() {
         });
 
         //=================== request booking vendor dashboard =========================
-        app.get('/api/request-booking-tickets', async (req, res) => {
+        app.get('/api/request-booking-tickets', verifyToken, async (req, res) => {
             const vendorEmail = req.query.vendorEmail;
 
             if (!vendorEmail) {
@@ -361,7 +361,7 @@ async function run() {
         });
 
         //================= get user created tickets api ============================
-        app.get('/api/get-user-created-tickets', async (req, res) => {
+        app.get('/api/get-user-created-tickets', verifyToken, async (req, res) => {
             const query = {};
 
             if (req.query.vendorEmail) {
@@ -377,7 +377,7 @@ async function run() {
         })
 
         // =================== my added tickets update ===============
-        app.patch('/api/update-ticket-info', async (req, res) => {
+        app.patch('/api/update-ticket-info', verifyToken, async (req, res) => {
             const { _id, ...updateData } = req.body;
             const filter = { _id: new ObjectId(_id) };
             const updateDoc = {
@@ -388,7 +388,7 @@ async function run() {
         })
 
         // ====================== my added tickets delete ===============
-        app.delete('/api/delete-ticket-info', async (req, res) => {
+        app.delete('/api/delete-ticket-info', verifyToken, async (req, res) => {
             const { _id } = req.body;
             const filter = { _id: new ObjectId(_id) };
             const result = await addTicketCollection.deleteOne(filter);
@@ -405,7 +405,7 @@ async function run() {
         });
 
         // ticket details page api
-        app.get('/api/tickets/:id', async (req, res) => {
+        app.get('/api/tickets/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
             const result = await addTicketCollection.findOne({
                 _id: new ObjectId(id),
@@ -415,7 +415,7 @@ async function run() {
         });
 
         //================= Advertise Toggle API ====================
-        app.patch('/api/advertise-ticket/:id', async (req, res) => {
+        app.patch('/api/advertise-ticket/:id', verifyToken, async (req, res) => {
             try {
                 const { id } = req.params;
                 const { advertised } = req.body;
