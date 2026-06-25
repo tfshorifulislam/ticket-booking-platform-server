@@ -8,6 +8,7 @@ app.use(express.json());
 app.use(cors());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { jwtVerify, createRemoteJWKSet } = require('jose-cjs');
 
 app.get('/', (req, res) => {
     res.send('Hello World!');
@@ -24,6 +25,45 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+
+
+const JWKS = createRemoteJWKSet(
+    new URL(`${process.env.PUBLIC_NEXT_CLIENT_URL}/api/auth/jwks`)
+)
+
+
+const verifyToken = async (req, res, next) => {
+    const token = req?.headers?.authorization;
+    console.log('token with headers', token);
+
+    if (!token) {
+        return res.status(401).send({ message: 'Unauthorized' });
+    }
+
+    const tokenParts = token?.split(' ')[1];
+    console.log('token parts', tokenParts);
+
+    if (!tokenParts) {
+        return res.status(401).send({ message: 'Unauthorized' });
+    }
+
+
+    try {
+        const { payload } = await jwtVerify(tokenParts, JWKS)
+        req.user = payload;
+        console.log('payload', payload);
+        next();
+    }
+    catch (error) {
+        console.log('token is not verify', error);
+        return res.status(401).send({ message: 'Unauthorized' });
+    }
+
+
+}
+
+
+
 
 async function run() {
     try {
