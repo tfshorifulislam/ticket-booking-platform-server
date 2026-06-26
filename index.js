@@ -28,7 +28,7 @@ const client = new MongoClient(uri, {
 
 
 const JWKS = createRemoteJWKSet(
-    new URL(`${process.env.PUBLIC_NEXT_CLIENT_URL}/api/auth/jwks`)
+    new URL(`${process.env.NEXT_PUBLIC_CLIENT_URL}/api/auth/jwks`)
 )
 
 
@@ -75,14 +75,8 @@ async function run() {
         const bookingsCollection = database.collection('booking')
         const userCollection = database.collection('user')
 
-        // =================== all user get ==============================
-        app.get('/all-user', async (req, res) => {
-            const result = await userCollection.find().toArray();
-            res.send(result);
-        })
-
         // ================= Make Admin =================
-        app.patch('/api/users/make-admin/:id', verifyToken, async (req, res) => {
+        app.patch('/api/users/make-admin/:id', async (req, res) => {
             const { id } = req.params;
 
             const result = await userCollection.updateOne(
@@ -101,7 +95,7 @@ async function run() {
         });
 
         // ================= Make Vendor =================
-        app.patch('/api/users/make-vendor/:id', verifyToken, async (req, res) => {
+        app.patch('/api/users/make-vendor/:id', async (req, res) => {
             const { id } = req.params;
 
             const result = await userCollection.updateOne(
@@ -120,7 +114,7 @@ async function run() {
         });
 
         // ================= Mark Fraud Vendor =================
-        app.patch('/api/users/fraud/:id', verifyToken, async (req, res) => {
+        app.patch('/api/users/fraud/:id', async (req, res) => {
             try {
                 const { id } = req.params;
 
@@ -167,24 +161,8 @@ async function run() {
             }
         });
 
-        //=================== get all pending tickets for admin approval ====================
-        app.get('/api/get-all-tickets', verifyToken, async (req, res) => {
-            try {
-                const result = await addTicketCollection
-                    .find({ status: 'pending' })
-                    .toArray();
-
-                res.send(result);
-            } catch (error) {
-                res.status(500).send({
-                    message: 'Failed to fetch tickets',
-                    error: error.message,
-                });
-            }
-        });
-
         // =================== update pending status =====================
-        app.patch('/api/ticket-status/:id', verifyToken, async (req, res) => {
+        app.patch('/api/ticket-status/:id', async (req, res) => {
             const { id } = req.params;
             const { status } = req.body;
 
@@ -200,15 +178,71 @@ async function run() {
             res.send(result);
         });
 
+        // =================== my added tickets update ===============
+        app.patch('/api/update-ticket-info', async (req, res) => {
+            const { _id, ...updateData } = req.body;
+            const filter = { _id: new ObjectId(_id) };
+            const updateDoc = {
+                $set: updateData,
+            };
+            const result = await addTicketCollection.updateOne(filter, updateDoc);
+            res.send(result);
+        })
+
+        //================= Advertise Toggle API ====================
+        app.patch('/api/advertise-ticket/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+                const { advertised } = req.body;
+
+                // Maximum 6 advertised tickets
+                if (advertised) {
+                    const count = await addTicketCollection.countDocuments({
+                        advertised: true,
+                    });
+
+                    if (count >= 6) {
+                        return res.status(400).send({
+                            success: false,
+                            message: 'Maximum 6 advertised tickets allowed',
+                        });
+                    }
+                }
+
+                const result = await addTicketCollection.updateOne(
+                    {
+                        _id: new ObjectId(id),
+                    },
+                    {
+                        $set: {
+                            advertised,
+                        },
+                    }
+                );
+
+                res.send({
+                    success: true,
+                    modifiedCount: result.modifiedCount,
+                });
+            } catch (error) {
+                res.status(500).send({
+                    success: false,
+                    message: error.message,
+                });
+            }
+        });
+
+
+
         //================= add ticket api ============================
-        app.post("/api/add-ticket", verifyToken, async (req, res) => {
+        app.post("/api/add-ticket", async (req, res) => {
             const ticket = req.body;
             const result = await addTicketCollection.insertOne(ticket);
             res.send(result);
         })
 
         //=====================booking ticket api =====================
-        app.post('/api/booking-ticket', verifyToken, async (req, res) => {
+        app.post('/api/booking-ticket', async (req, res) => {
             const { ticketId, quantity, userEmail, title, to, from, vendorEmail, userName } = req.body;
 
             const ticket = await addTicketCollection.findOne({
@@ -238,8 +272,10 @@ async function run() {
             res.send({ success: true, message: 'Booked successfully' });
         });
 
+
+
         //=============== booking ticket accept api ==================
-        app.put("/bookings/accept/:id", verifyToken, async (req, res) => {
+        app.put("/bookings/accept/:id", async (req, res) => {
             try {
                 const bookingId = req.params.id;
 
@@ -282,7 +318,7 @@ async function run() {
         });
 
         //=============== booking ticket reject api ==================
-        app.put("/bookings/reject/:id",verifyToken, async (req, res) => {
+        app.put("/bookings/reject/:id", async (req, res) => {
             try {
                 const bookingId = req.params.id;
 
@@ -326,21 +362,51 @@ async function run() {
             }
         });
 
-        //============ booking ticket get ================
-        app.get('/api/my-booked-tickets', verifyToken, async (req, res) => {
-            try {
-                const email = req.query.email;
 
-                if (!email) return res.send([]);
 
-                const result = await bookingsCollection.find({
-                    userEmail: email
-                }).toArray();
+        // ====================== my added tickets delete ===============
+        app.delete('/api/delete-ticket-info', async (req, res) => {
+            const { _id } = req.body;
+            const filter = { _id: new ObjectId(_id) };
+            const result = await addTicketCollection.deleteOne(filter);
+            res.send(result);
+        })
 
-                res.send(result);
-            } catch (err) {
-                res.status(500).send([]);
-            }
+
+
+        // all advertisement tickets
+        app.get('/api/advertise/tickets', async (req, res) => {
+            const cursor = addTicketCollection.find({
+                advertised: true
+            });
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+        // all approved tickets
+        app.get('/api/tickets', async (req, res) => {
+            const cursor = addTicketCollection.find({
+                status: "approved"
+            });
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+        // =================== all user get ==============================
+        app.get('/api/all-user', verifyToken, async (req, res) => {
+            const result = await userCollection.find().toArray();
+            res.send(result);
+        })
+
+        // ticket details page api
+        app.get('/api/tickets/:id', verifyToken, async (req, res) => {
+            const { id } = req.params;
+            const result = await addTicketCollection.findOne({
+                _id: new ObjectId(id),
+            });
+
+            console.log("Result:", result);
+            res.send(result);
         });
 
         //=================== request booking vendor dashboard =========================
@@ -376,99 +442,42 @@ async function run() {
             res.send(result);
         })
 
-        // =================== my added tickets update ===============
-        app.patch('/api/update-ticket-info', verifyToken, async (req, res) => {
-            const { _id, ...updateData } = req.body;
-            const filter = { _id: new ObjectId(_id) };
-            const updateDoc = {
-                $set: updateData,
-            };
-            const result = await addTicketCollection.updateOne(filter, updateDoc);
-            res.send(result);
-        })
-
-        // ====================== my added tickets delete ===============
-        app.delete('/api/delete-ticket-info', verifyToken, async (req, res) => {
-            const { _id } = req.body;
-            const filter = { _id: new ObjectId(_id) };
-            const result = await addTicketCollection.deleteOne(filter);
-            res.send(result);
-        })
-
-        // all approved tickets
-        app.get('/api/tickets', async (req, res) => {
-            const cursor = addTicketCollection.find({
-                status: "approved"
-            });
-            const result = await cursor.toArray();
-            res.send(result);
-        });
-
-        // ticket details page api
-        app.get('/api/tickets/:id', verifyToken, async (req, res) => {
-            const { id } = req.params;
-            const result = await addTicketCollection.findOne({
-                _id: new ObjectId(id),
-            });
-
-            res.send(result);
-        });
-
-        //================= Advertise Toggle API ====================
-        app.patch('/api/advertise-ticket/:id', verifyToken, async (req, res) => {
+        //============ booking ticket get ================
+        app.get('/api/my-booked-tickets', verifyToken, async (req, res) => {
             try {
-                const { id } = req.params;
-                const { advertised } = req.body;
+                const email = req.query.email;
 
-                // Maximum 6 advertised tickets
-                if (advertised) {
-                    const count = await addTicketCollection.countDocuments({
-                        advertised: true,
-                    });
+                if (!email) return res.send([]);
 
-                    if (count >= 6) {
-                        return res.status(400).send({
-                            success: false,
-                            message: 'Maximum 6 advertised tickets allowed',
-                        });
-                    }
-                }
+                const result = await bookingsCollection.find({
+                    userEmail: email
+                }).toArray();
 
-                const result = await addTicketCollection.updateOne(
-                    {
-                        _id: new ObjectId(id),
-                    },
-                    {
-                        $set: {
-                            advertised,
-                        },
-                    }
-                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send([]);
+            }
+        });
 
-                res.send({
-                    success: true,
-                    modifiedCount: result.modifiedCount,
-                });
+        //=================== get all pending tickets for admin approval ====================
+        app.get('/api/get-all-tickets', verifyToken, async (req, res) => {
+            try {
+                const result = await addTicketCollection
+                    .find({ status: 'pending' })
+                    .toArray();
+
+                res.send(result);
             } catch (error) {
                 res.status(500).send({
-                    success: false,
-                    message: error.message,
+                    message: 'Failed to fetch tickets',
+                    error: error.message,
                 });
             }
         });
 
-        // all advertisement tickets
-        app.get('/api/advertise/tickets', async (req, res) => {
-            const cursor = addTicketCollection.find({
-                advertised: true
-            });
-            const result = await cursor.toArray();
-            res.send(result);
-        });
 
-
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // await client.close();
     }
