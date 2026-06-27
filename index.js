@@ -5,7 +5,15 @@ const cors = require('cors');
 
 require('dotenv').config();
 app.use(express.json());
-app.use(cors());
+app.use(
+    cors({
+        origin: [
+            "http://localhost:3000",
+            "https://ticket-booking-client.vercel.app",
+        ],
+        credentials: true,
+    })
+);
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const { jwtVerify, createRemoteJWKSet } = require('jose-cjs');
@@ -30,7 +38,6 @@ const client = new MongoClient(uri, {
 const JWKS = createRemoteJWKSet(
     new URL(`${process.env.NEXT_PUBLIC_CLIENT_URL}/api/auth/jwks`)
 )
-
 
 const verifyToken = async (req, res, next) => {
     const token = req?.headers?.authorization;
@@ -63,12 +70,9 @@ const verifyToken = async (req, res, next) => {
 }
 
 
-
-
 async function run() {
     try {
         // await client.connect();
-
 
         const database = client.db("ticket-booking-user-info");
         const addTicketCollection = database.collection('all_ticket');
@@ -76,7 +80,7 @@ async function run() {
         const userCollection = database.collection('user')
 
         // ================= Make Admin =================
-        app.patch('/api/users/make-admin/:id', async (req, res) => {
+        app.patch('/api/users/make-admin/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
 
             const result = await userCollection.updateOne(
@@ -95,7 +99,7 @@ async function run() {
         });
 
         // ================= Make Vendor =================
-        app.patch('/api/users/make-vendor/:id', async (req, res) => {
+        app.patch('/api/users/make-vendor/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
 
             const result = await userCollection.updateOne(
@@ -114,7 +118,7 @@ async function run() {
         });
 
         // ================= Mark Fraud Vendor =================
-        app.patch('/api/users/fraud/:id', async (req, res) => {
+        app.patch('/api/users/fraud/:id', verifyToken, async (req, res) => {
             try {
                 const { id } = req.params;
 
@@ -162,7 +166,7 @@ async function run() {
         });
 
         // =================== update pending status =====================
-        app.patch('/api/ticket-status/:id', async (req, res) => {
+        app.patch('/api/ticket-status/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
             const { status } = req.body;
 
@@ -179,7 +183,7 @@ async function run() {
         });
 
         // =================== my added tickets update ===============
-        app.patch('/api/update-ticket-info', async (req, res) => {
+        app.patch('/api/update-ticket-info', verifyToken, async (req, res) => {
             const { _id, ...updateData } = req.body;
             const filter = { _id: new ObjectId(_id) };
             const updateDoc = {
@@ -190,7 +194,7 @@ async function run() {
         })
 
         //================= Advertise Toggle API ====================
-        app.patch('/api/advertise-ticket/:id', async (req, res) => {
+        app.patch('/api/advertise-ticket/:id', verifyToken, async (req, res) => {
             try {
                 const { id } = req.params;
                 const { advertised } = req.body;
@@ -235,14 +239,14 @@ async function run() {
 
 
         //================= add ticket api ============================
-        app.post("/api/add-ticket", async (req, res) => {
+        app.post("/api/add-ticket", verifyToken, async (req, res) => {
             const ticket = req.body;
             const result = await addTicketCollection.insertOne(ticket);
             res.send(result);
         })
 
         //=====================booking ticket api =====================
-        app.post('/api/booking-ticket', async (req, res) => {
+        app.post('/api/booking-ticket', verifyToken, async (req, res) => {
             const { ticketId, quantity, userEmail, title, to, from, vendorEmail, userName } = req.body;
 
             const ticket = await addTicketCollection.findOne({
@@ -275,7 +279,7 @@ async function run() {
 
 
         //=============== booking ticket accept api ==================
-        app.put("/bookings/accept/:id", async (req, res) => {
+        app.put("/bookings/accept/:id", verifyToken, async (req, res) => {
             try {
                 const bookingId = req.params.id;
 
@@ -318,7 +322,7 @@ async function run() {
         });
 
         //=============== booking ticket reject api ==================
-        app.put("/bookings/reject/:id", async (req, res) => {
+        app.put("/bookings/reject/:id", verifyToken, async (req, res) => {
             try {
                 const bookingId = req.params.id;
 
@@ -365,7 +369,7 @@ async function run() {
 
 
         // ====================== my added tickets delete ===============
-        app.delete('/api/delete-ticket-info', async (req, res) => {
+        app.delete('/api/delete-ticket-info', verifyToken, async (req, res) => {
             const { _id } = req.body;
             const filter = { _id: new ObjectId(_id) };
             const result = await addTicketCollection.deleteOne(filter);
